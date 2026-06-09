@@ -6,30 +6,37 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from ingest import CHROMA_DIR, COLLECTION_NAME, get_chroma_collection
+from ingest import CHROMA_DIR, get_chroma_collection
+
+load_dotenv(Path(__file__).parent / ".env")
 
 MODEL_ID = "gemini-2.5-flash"
-TOP_K = 3
+TOP_K = 4
 
 SYSTEM_INSTRUCTION = """You are 'The Unofficial Guide' for Texas State University.
 
 RULES:
-- Answer ONLY using the numbered CONTEXT sources below.
-- Cite sources inline using [chunk_XXX] tags (e.g. [chunk_001]) whenever you state a fact.
-- If the context does not contain enough information, say "I don't know" and explain what is missing.
+- Answer ONLY using the CONTEXT sources below.
+- Cite sources inline using [source_file] tags when stating facts.
+- If the context does not contain enough information to answer, say exactly:
+  "I don't have enough information on that in my unofficial guide."
 - Do not use outside knowledge. Do not invent professors, ratings, or housing details.
-- For comparisons, only compare facts present in the context."""
+- For comparisons, only compare facts explicitly present in the context."""
 
 
 @dataclass
 class RetrievedChunk:
     chunk_id: str
     text: str
-    source_tag: str
+    source_file: str
+    source_url: str
     distance: float | None
 
 
@@ -38,22 +45,19 @@ def get_collection():
 
 
 def retrieve_relevant_chunks(user_query: str, top_k: int = TOP_K) -> list[RetrievedChunk]:
-    """Semantic search over the vector store — returns top-k chunks by embedding similarity."""
     collection = get_collection()
     results = collection.query(query_texts=[user_query], n_results=top_k)
 
-    ids = results["ids"][0]
-    documents = results["documents"][0]
-    metadatas = results["metadatas"][0]
-    distances = results.get("distances", [[]])[0]
-
     retrieved: list[RetrievedChunk] = []
-    for i, chunk_id in enumerate(ids):
+    for i, chunk_id in enumerate(results["ids"][0]):
+        meta = results["metadatas"][0][i]
+        distances = results.get("distances", [[]])[0]
         retrieved.append(
             RetrievedChunk(
                 chunk_id=chunk_id,
-                text=documents[i],
-                source_tag=metadatas[i].get("source_tag", "unknown"),
+                text=results["documents"][0][i],
+                source_file=meta.get("source_file", "unknown"),
+                source_url=meta.get("source_url", "unknown"),
                 distance=distances[i] if distances else None,
             )
         )
@@ -64,36 +68,50 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
     lines = []
     for c in chunks:
         dist = f" (distance={c.distance:.4f})" if c.distance is not None else ""
-        lines.append(
-            f"[{c.chunk_id}] ({c.source_tag}){dist}\n{c.text}"
-        )
+        lines.append(f"[{c.source_file}]{dist}\n{c.text}")
     return "\n\n".join(lines)
 
 
-def ask_unofficial_guide(
+def format_sources(chunks: list[RetrievedChunk]) -> str:
+    seen: set[str] = set()
+    lines = []
+    for c in chunks:
+        if c.source_file in seen:
+            continue
+        seen.add(c.source_file)
+        lines.append(f"- {c.source_file} ({c.source_url})")
+    return "\n".join(lines)
+
+
+@lru_cache(maxsize=1)
+def create_gemini_client() -> genai.Client:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise EnvironmentError(
+            "GEMINI_API_KEY is not set. Copy .env.example to .env or run:\n"
+            '  $env:GEMINI_API_KEY="your_key_here"'
+        )
+    return genai.Client(api_key=api_key)
+
+
+def ask(
     user_question: str,
-    client: genai.Client,
     *,
     top_k: int = TOP_K,
-    verbose: bool = True,
+    verbose: bool = False,
 ) -> dict:
-    """Run full RAG: retrieve → prompt → generate. Returns structured result dict."""
+    """End-to-end RAG: retrieve, generate, attach programmatic source list."""
     chunks = retrieve_relevant_chunks(user_question, top_k=top_k)
     context = format_context(chunks)
+    sources_block = format_sources(chunks)
 
     user_message = f"CONTEXT:\n{context}\n\nQUESTION:\n{user_question}"
+    client = create_gemini_client()
 
     if verbose:
-        print("=" * 60)
-        print("TXST UNOFFICIAL GUIDE — RAG PIPELINE")
-        print("=" * 60)
-        print(f"\n[1] USER QUERY:\n    {user_question}\n")
-        print("[2] RETRIEVED CHUNKS (vector search):")
+        print(f"Query: {user_question}")
         for c in chunks:
-            dist = f"{c.distance:.4f}" if c.distance is not None else "n/a"
-            print(f"    • {c.chunk_id} [{c.source_tag}] dist={dist}")
-            print(f"      {c.text[:100]}{'...' if len(c.text) > 100 else ''}")
-        print(f"\n[3] PROMPT → {MODEL_ID} (temperature=0.0)\n")
+            print(f"  {c.source_file} dist={c.distance}")
 
     response = client.models.generate_content(
         model=MODEL_ID,
@@ -105,24 +123,19 @@ def ask_unofficial_guide(
     )
 
     answer = response.text or "(No text returned by model.)"
-
-    if verbose:
-        print(f"[4] GEMINI RESPONSE:\n    {answer}\n")
-        print("=" * 60)
+    full_answer = f"{answer}\n\n---\nRetrieved from:\n{sources_block}"
 
     return {
         "question": user_question,
+        "answer": full_answer,
+        "answer_text": answer,
+        "sources": [c.source_file for c in chunks],
+        "sources_display": sources_block,
         "chunks": chunks,
-        "answer": answer,
-        "context": context,
     }
 
 
-def create_gemini_client() -> genai.Client:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "GEMINI_API_KEY is not set. "
-            'PowerShell: $env:GEMINI_API_KEY="your_key_here"'
-        )
-    return genai.Client(api_key=api_key)
+def ask_unofficial_guide(user_question: str, client: genai.Client, **kwargs) -> dict:
+    """Backward-compatible wrapper used by evaluate.py."""
+    del client
+    return ask(user_question, **kwargs)

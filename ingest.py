@@ -1,71 +1,132 @@
 """
-Document ingestion: load TXST text, clean, chunk, embed, and store in ChromaDB.
+Document ingestion: load TXST documents, clean, chunk, embed, store in ChromaDB.
 """
 
 from __future__ import annotations
 
 import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
-DATA_FILE = Path(__file__).parent / "txst_data.txt"
+DOCUMENTS_DIR = Path(__file__).parent / "documents"
 CHROMA_DIR = Path(__file__).parent / "chroma_db"
 COLLECTION_NAME = "txst_unofficial_guide"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+CHUNK_SIZE = 300
+CHUNK_OVERLAP = 80
 
 
 @dataclass
 class DocumentChunk:
     chunk_id: str
     text: str
-    source_tag: str
-    category: str
+    source_file: str
+    source_url: str
+    chunk_index: int
 
 
-def load_raw_text(filepath: Path = DATA_FILE) -> str:
-    if not filepath.exists():
-        raise FileNotFoundError(f"Data file not found: {filepath}")
-    return filepath.read_text(encoding="utf-8")
-
-
-def clean_and_chunk(raw_text: str) -> list[DocumentChunk]:
-    """Strip comments/blank lines and split into one chunk per content line."""
-    chunks: list[DocumentChunk] = []
-    index = 0
-
-    for line in raw_text.splitlines():
+def clean_text(raw: str) -> str:
+    """Remove source headers and normalize whitespace."""
+    lines = []
+    for line in raw.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if not stripped:
             continue
+        if stripped.lower().startswith("source:"):
+            continue
+        if stripped.lower().startswith("collected:"):
+            continue
+        lines.append(stripped)
+    text = " ".join(lines)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
-        source_tag = "unknown"
-        category = "general"
-        body = stripped
 
-        tag_match = re.match(r"^\[([^\]]+)\]\s*(.*)$", stripped)
-        if tag_match:
-            source_tag = tag_match.group(1)
-            body = tag_match.group(2).strip()
-            category = source_tag.split("/")[0].lower()
+def extract_source_url(raw: str) -> str:
+    for line in raw.splitlines():
+        if line.strip().lower().startswith("source:"):
+            return line.split(":", 1)[1].strip()
+    return "unknown"
 
-        chunk_id = f"chunk_{index:03d}"
-        chunks.append(
+
+def split_sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def chunk_text(text: str, source_file: str, source_url: str) -> list[DocumentChunk]:
+    """Chunk by document boundary for short reviews; sentence splits with overlap for long text."""
+    if len(text) <= CHUNK_SIZE:
+        return [
             DocumentChunk(
-                chunk_id=chunk_id,
-                text=body,
-                source_tag=source_tag,
-                category=category,
+                chunk_id=f"{source_file}::0",
+                text=text,
+                source_file=source_file,
+                source_url=source_url,
+                chunk_index=0,
             )
+        ]
+
+    sentences = split_sentences(text)
+    chunks: list[str] = []
+    current = ""
+    for sentence in sentences:
+        if len(current) + len(sentence) + 1 <= CHUNK_SIZE:
+            current = f"{current} {sentence}".strip()
+        else:
+            if current:
+                chunks.append(current)
+            current = sentence
+    if current:
+        chunks.append(current)
+
+    # Apply character overlap between adjacent chunks
+    overlapped: list[str] = []
+    for i, chunk in enumerate(chunks):
+        if i == 0:
+            overlapped.append(chunk)
+            continue
+        prev_tail = overlapped[-1][-CHUNK_OVERLAP:] if len(overlapped[-1]) > CHUNK_OVERLAP else overlapped[-1]
+        overlapped.append(f"{prev_tail} {chunk}".strip())
+
+    return [
+        DocumentChunk(
+            chunk_id=f"{source_file}::{i}",
+            text=body,
+            source_file=source_file,
+            source_url=source_url,
+            chunk_index=i,
         )
-        index += 1
+        for i, body in enumerate(overlapped)
+        if body
+    ]
 
-    if not chunks:
-        raise ValueError("No valid document chunks found after cleaning.")
 
-    return chunks
+def load_documents(documents_dir: Path = DOCUMENTS_DIR) -> list[DocumentChunk]:
+    if not documents_dir.exists():
+        raise FileNotFoundError(f"Documents directory not found: {documents_dir}")
+
+    files = sorted(documents_dir.glob("*.txt"))
+    if len(files) < 10:
+        raise ValueError(f"Need at least 10 documents; found {len(files)} in {documents_dir}")
+
+    all_chunks: list[DocumentChunk] = []
+    for path in files:
+        raw = path.read_text(encoding="utf-8")
+        body = clean_text(raw)
+        if not body:
+            continue
+        source_url = extract_source_url(raw)
+        all_chunks.extend(chunk_text(body, path.name, source_url))
+
+    if not all_chunks:
+        raise ValueError("No valid chunks produced from documents.")
+
+    return all_chunks
 
 
 def get_chroma_collection(persist_dir: Path = CHROMA_DIR):
@@ -80,33 +141,36 @@ def get_chroma_collection(persist_dir: Path = CHROMA_DIR):
 
 
 def ingest_documents(
-    filepath: Path = DATA_FILE,
+    documents_dir: Path = DOCUMENTS_DIR,
     persist_dir: Path = CHROMA_DIR,
     reset: bool = True,
 ) -> tuple[list[DocumentChunk], chromadb.Collection]:
-    """Full ingestion pipeline: clean → chunk → embed → store."""
-    raw = load_raw_text(filepath)
-    chunks = clean_and_chunk(raw)
+    """Full pipeline: load -> clean -> chunk -> embed -> store."""
+    chunks = load_documents(documents_dir)
 
     if reset and persist_dir.exists():
-        import shutil
-
         shutil.rmtree(persist_dir)
 
     collection = get_chroma_collection(persist_dir)
-
     collection.add(
         ids=[c.chunk_id for c in chunks],
         documents=[c.text for c in chunks],
         metadatas=[
-            {"source_tag": c.source_tag, "category": c.category}
+            {
+                "source_file": c.source_file,
+                "source_url": c.source_url,
+                "chunk_index": c.chunk_index,
+            }
             for c in chunks
         ],
     )
-
     return chunks, collection
 
 
 if __name__ == "__main__":
     docs, col = ingest_documents()
-    print(f"Ingested {len(docs)} chunks into '{COLLECTION_NAME}' ({col.count()} in store).")
+    print(f"Ingested {len(docs)} chunks from {len(list(DOCUMENTS_DIR.glob('*.txt')))} documents.")
+    print(f"ChromaDB collection '{COLLECTION_NAME}' count: {col.count()}")
+    print("\nSample chunks:")
+    for c in docs[:5]:
+        print(f"  [{c.chunk_id}] {c.text[:90]}...")

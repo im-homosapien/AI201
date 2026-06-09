@@ -1,94 +1,92 @@
 # TXST Unofficial Guide - Evaluation Report
 
-**Generated:** 2026-06-09 17:33 UTC
+**Generated:** 2026-06-09 18:06 UTC
 
-_Generation tests skipped - set `GEMINI_API_KEY` and re-run `python evaluate.py` to include live Gemini results._
-
-## Methodology
-
-- **Ingestion:** `txst_data.txt` -> clean/chunk -> `all-MiniLM-L6-v2` embeddings -> ChromaDB
-- **Retrieval:** Top-3 semantic search per query
-- **Generation:** `gemini-2.5-flash`, temperature=0.0, citation-required system prompt
-
-## Test Results
-
-| # | Test | Retrieval | Generation | Notes |
-|---|------|-----------|------------|-------|
-| 1 | professor_smith | PASS | SKIP | Retrieved: chunk_000, chunk_001, chunk_002 |
-| 2 | professor_jones | PASS | SKIP | Retrieved: chunk_001, chunk_000, chunk_002 |
-| 3 | professor_comparison | PASS | SKIP | Critical comparison case — needs BOTH professors in top-k retrieval. |
-| 4 | on_campus_housing | PASS | SKIP | Retrieved: chunk_004, chunk_009, chunk_005 |
-| 5 | dining_hall | PASS | SKIP | Retrieved: chunk_007, chunk_004, chunk_008 |
-| 6 | out_of_corpus | PASS | SKIP | No MATH 2471 data exists — model should refuse or say I don't know. |
+| # | Question | Retrieval | Response accuracy |
+|---|----------|-----------|-------------------|
+| 1 | What do students say about Prof. Smith for CS 1428... | PASS | SKIP (no API key) |
+| 2 | Is Prof. Jones a good choice for CS 1428?... | PASS | SKIP (no API key) |
+| 3 | Which on-campus housing is near Alkek Library?... | PASS | SKIP (no API key) |
+| 4 | Which dining hall has the widest hours on main cam... | PASS | SKIP (no API key) |
+| 5 | Who is the best professor for MATH 2471 at TXST?... | PASS | SKIP (no API key) |
 
 ## Detailed Results
 
-### professor_smith
+### Q1: professor_smith
 
 **Question:** What do students say about Prof. Smith for CS 1428?
+**Expected:** Clear lectures, extra credit on labs, math-heavy exams, 4.5/5 rating.
+**Retrieval:** PASS
+**Accuracy:** SKIP (no API key)
 
 **Retrieved chunks:**
-- `chunk_000` (dist=0.3163): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and generous extra credit on labs. C...
-- `chunk_001` (dist=0.4677): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Grading is described as harsh compar...
-- `chunk_002` (dist=0.5104): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Office hours are packed before midt...
+- `rmp_cs1428_smith.txt` (dist=0.3163): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and ge...
+- `rmp_cs1428_jones.txt` (dist=0.4677): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Gradin...
+- `rmp_cs1428_garcia.txt` (dist=0.5104): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Offic...
+- `reddit_academics_cs_advising.txt` (dist=0.5849): The CS advising office is in Comal Building 307. Bring your degree audit PDF to drop/add week — walk-in slots go fast in...
 
-### professor_jones
+### Q2: professor_jones
 
 **Question:** Is Prof. Jones a good choice for CS 1428?
+**Expected:** No — pop quizzes, strict attendance, harsh grading, 2/10 rating.
+**Retrieval:** PASS
+**Accuracy:** SKIP (no API key)
 
 **Retrieved chunks:**
-- `chunk_001` (dist=0.3433): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Grading is described as harsh compar...
-- `chunk_000` (dist=0.4387): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and generous extra credit on labs. C...
-- `chunk_002` (dist=0.5805): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Office hours are packed before midt...
+- `rmp_cs1428_jones.txt` (dist=0.3433): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Gradin...
+- `rmp_cs1428_smith.txt` (dist=0.4387): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and ge...
+- `reddit_academics_cs_advising.txt` (dist=0.5601): The CS advising office is in Comal Building 307. Bring your degree audit PDF to drop/add week — walk-in slots go fast in...
+- `rmp_cs1428_garcia.txt` (dist=0.5805): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Offic...
 
-### professor_comparison
+### Q3: housing_library
 
-**Question:** Who is better for CS 1428, Prof. Jones or Prof. Smith?
-
-**Retrieved chunks:**
-- `chunk_000` (dist=0.3798): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and generous extra credit on labs. C...
-- `chunk_001` (dist=0.4646): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Grading is described as harsh compar...
-- `chunk_002` (dist=0.6150): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Office hours are packed before midt...
-
-### on_campus_housing
-
-**Question:** Which on-campus housing is near the library?
+**Question:** Which on-campus housing is near Alkek Library?
+**Expected:** San Jacinto Hall, near Alkek Library and LBJ Student Center.
+**Retrieval:** PASS
+**Accuracy:** SKIP (no API key)
 
 **Retrieved chunks:**
-- `chunk_004` (dist=0.4589): Chautauqua Hall is closer to the Roy F. Mitte building (engineering/CS). Good pick if you have early morning classes on the west side of campus. Laund...
-- `chunk_009` (dist=0.5550): Alkek Library floor 4 is the go-to quiet study zone at Texas State. Group study rooms on floor 2 must be booked through the library website during fin...
-- `chunk_005` (dist=0.5722): San Jacinto Hall sits near Alkek Library and the LBJ Student Center. Apply through the TXST housing portal early — fall spots fill by April for return...
+- `reddit_campus_alkek_library.txt` (dist=0.3714): Alkek Library floor 4 is the go-to quiet study zone at Texas State. Group study rooms on floor 2 must be booked through ...
+- `reddit_housing_san_jacinto.txt` (dist=0.4749): San Jacinto Hall sits near Alkek Library and the LBJ Student Center. Apply through the TXST housing portal early — fall ...
+- `reddit_housing_chautauqua.txt` (dist=0.5389): Chautauqua Hall is closer to the Roy F. Mitte building (engineering/CS). Good pick if you have early morning classes on ...
+- `reddit_housing_bobcat_village.txt` (dist=0.6122): Bobcat Village is popular on-campus housing at TXST. Pros: furnished units and a pool. Cons: pricey compared to off-camp...
 
-### dining_hall
+### Q4: dining_hours
 
-**Question:** Which dining hall has the longest hours?
-
-**Retrieved chunks:**
-- `chunk_007` (dist=0.4129): Jones Dining Hall (JDH) accepts meal swipes and has the widest hours on main campus. The breakfast bar is solid; dinner lines spike 6–7 PM....
-- `chunk_004` (dist=0.6242): Chautauqua Hall is closer to the Roy F. Mitte building (engineering/CS). Good pick if you have early morning classes on the west side of campus. Laund...
-- `chunk_008` (dist=0.6858): Harris Dining Hall near the stadium is quieter at lunch. Vegetarian options improved after the 2024 menu refresh according to student posts....
-
-### out_of_corpus
-
-**Question:** What is the best professor for MATH 2471?
+**Question:** Which dining hall has the widest hours on main campus?
+**Expected:** Jones Dining Hall (JDH) has the widest hours on main campus.
+**Retrieval:** PASS
+**Accuracy:** SKIP (no API key)
 
 **Retrieved chunks:**
-- `chunk_000` (dist=0.5502): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and generous extra credit on labs. C...
-- `chunk_002` (dist=0.5902): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Office hours are packed before midt...
-- `chunk_001` (dist=0.6706): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Grading is described as harsh compar...
+- `reddit_dining_jones_hall.txt` (dist=0.3486): Jones Dining Hall (JDH) accepts meal swipes and has the widest hours on main campus. The breakfast bar is solid; dinner ...
+- `reddit_housing_chautauqua.txt` (dist=0.4282): Chautauqua Hall is closer to the Roy F. Mitte building (engineering/CS). Good pick if you have early morning classes on ...
+- `reddit_dining_harris_hall.txt` (dist=0.6356): Harris Dining Hall near the stadium is quieter at lunch. Vegetarian options improved after the 2024 menu refresh accordi...
+- `reddit_campus_alkek_library.txt` (dist=0.6393): Alkek Library floor 4 is the go-to quiet study zone at Texas State. Group study rooms on floor 2 must be booked through ...
 
-## Identified Failure Mode
+### Q5: out_of_scope
 
-### Failure: Single-chunk keyword routing in prototype (fixed) -> top-k semantic gap on niche queries
+**Question:** Who is the best professor for MATH 2471 at TXST?
+**Expected:** System should refuse — no MATH 2471 documents in corpus.
+**Retrieval:** PASS
+**Accuracy:** SKIP (no API key)
 
-**Pipeline stage:** Retrieval
+**Retrieved chunks:**
+- `rmp_cs1428_smith.txt` (dist=0.5127): Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and ge...
+- `rmp_cs1428_jones.txt` (dist=0.5595): Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Gradin...
+- `rmp_cs1428_garcia.txt` (dist=0.5839): Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Offic...
+- `reddit_campus_alkek_library.txt` (dist=0.6900): Alkek Library floor 4 is the go-to quiet study zone at Texas State. Group study rooms on floor 2 must be booked through ...
 
-**What happened:** In the original keyword-only prototype, the comparison question "Who is better for CS 1428, Prof. Jones or Prof. Smith?" retrieved only the first name-matched professor. Gemini correctly answered "I don't know" about the other professor because the missing context was never retrieved.
+## Failure Case
 
-**Fix applied:** Switched to ChromaDB vector search with `top_k=3` so comparison queries can surface multiple relevant chunks. The `professor_comparison` test above validates whether both professors appear in retrieval.
+**Question:** Who is the best professor for MATH 2471 at TXST?
 
-**Remaining risk:** Out-of-corpus questions (e.g. MATH 2471) may still retrieve tangentially related CS or academic chunks. The generation prompt must refuse when context is irrelevant — verified in the `out_of_corpus` test.
+**Pipeline stage:** Retrieval + Generation
+
+**What happened:** Retrieval returns CS 1428 professor chunks (semantic similarity to 'professor' queries) even though MATH 2471 is not in the corpus. Without strict grounding, the LLM might hallucinate a math professor name.
+
+**Mitigation:** System prompt requires refusal when context lacks the answer. Programmatic source list shows retrieved docs are CS-related, not MATH 2471.
 
 ## Summary
 
-- **All automated checks passed.**
+All retrieval checks passed. Run with GEMINI_API_KEY for generation scores.
