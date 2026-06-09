@@ -1,0 +1,32 @@
+# TXST Unofficial Guide — collected student knowledge base
+# Sources: RateMyProfessor threads, r/txst housing posts, campus survival tips
+
+[RMP/CS1428] Prof. Smith teaches CS 1428 (Fundamentals of Computer Science) at Texas State. Students praise his clear lectures and generous extra credit on labs. Common complaint: exams lean heavily on math proofs. Overall rating: 4.5/5.
+
+[RMP/CS1428] Prof. Jones also teaches CS 1428 at TXST. Reviews warn about frequent pop quizzes and strict attendance policies. Grading is described as harsh compared to other sections. Overall rating: 2/10.
+
+[RMP/CS1428] Prof. Garcia teaches CS 1428 in the fall. Students say she moves fast but posts detailed lecture slides on Canvas. Office hours are packed before midterms. Rating: 3.9/5.
+
+[r/txst/Housing] Bobcat Village is popular on-campus housing at TXST. Pros: furnished units and a pool. Cons: pricey compared to off-campus options — budget $1,100+ per month for a private room.
+
+[r/txst/Housing] Chautauqua Hall is closer to the Roy F. Mitte building (engineering/CS). Good pick if you have early morning classes on the west side of campus. Laundry rooms get crowded on Sundays.
+
+[r/txst/Housing] San Jacinto Hall sits near Alkek Library and the LBJ Student Center. Apply through the TXST housing portal early — fall spots fill by April for returning students.
+
+[r/txst/Housing] Off-campus tip: many TXST students rent along Craddock Avenue or Hunter Road. Expect $650–$900 per person for a shared apartment, plus utilities. Check bus routes on the Bobcat Shuttle map.
+
+[r/txst/Dining] Jones Dining Hall (JDH) accepts meal swipes and has the widest hours on main campus. The breakfast bar is solid; dinner lines spike 6–7 PM.
+
+[r/txst/Dining] Harris Dining Hall near the stadium is quieter at lunch. Vegetarian options improved after the 2024 menu refresh according to student posts.
+
+[r/txst/Campus] Alkek Library floor 4 is the go-to quiet study zone at Texas State. Group study rooms on floor 2 must be booked through the library website during finals week.
+
+[r/txst/Campus] The Bobcat Shuttle runs between main campus, the stadium, and some off-campus stops. Free with a valid TXST student ID — track buses on the Ride Systems app.
+
+[r/txst/Campus] The Quad is the center of campus life during Bobcat Days and organization fairs. Good spot to find club flyers at the start of each semester.
+
+[r/txst/Campus] Parking at TXST: commuter lots fill by 9 AM on Tuesdays and Thursdays. The Strahan lot near the library is walkable but competitive — arrive before 8:30 AM or use the park-and-ride.
+
+[r/txst/Academics] The CS advising office is in Comal Building 307. Bring your degree audit PDF to drop/add week — walk-in slots go fast in September.
+
+[r/txst/Academics] Supplemental Instruction (SI) sessions for CS 1428 are usually held in Alkek. Check the SLAC website the second week of classes for the schedule.
